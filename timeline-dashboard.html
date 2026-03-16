@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cohort Delivery vs Registration — Timeline Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #f0f4f8;
+    color: #1a2332;
+    padding: 28px 24px 40px;
+    min-height: 100vh;
+  }
+
+  h1 {
+    text-align: center;
+    font-size: 1.65rem;
+    font-weight: 700;
+    color: #0f2b46;
+    margin-bottom: 6px;
+  }
+
+  .subtitle {
+    text-align: center;
+    font-size: 0.9rem;
+    color: #5a7184;
+    margin-bottom: 32px;
+  }
+
+  /* ── Metric Cards ── */
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+
+  .card {
+    background: #fff;
+    border-radius: 14px;
+    padding: 22px 20px 18px;
+    box-shadow: 0 2px 10px rgba(15, 43, 70, 0.08);
+    text-align: center;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(15, 43, 70, 0.12);
+  }
+
+  .card .value {
+    font-size: 2.1rem;
+    font-weight: 700;
+    color: #0a7e8c;
+    line-height: 1.15;
+  }
+
+  .card .label {
+    font-size: 0.78rem;
+    color: #5a7184;
+    margin-top: 6px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  /* ── Chart Grid ── */
+  .charts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+    gap: 20px;
+  }
+
+  .chart-box {
+    background: #fff;
+    border-radius: 14px;
+    padding: 22px 24px 18px;
+    box-shadow: 0 2px 10px rgba(15, 43, 70, 0.08);
+  }
+
+  .chart-box h2 {
+    font-size: 0.93rem;
+    font-weight: 600;
+    color: #0f2b46;
+    margin-bottom: 14px;
+  }
+
+  canvas { width: 100% !important; }
+
+  /* ── No-Delivery Callout ── */
+  .callout {
+    margin-top: 24px;
+    background: #fff8ed;
+    border-left: 4px solid #f59e0b;
+    border-radius: 12px;
+    padding: 18px 22px;
+    box-shadow: 0 2px 10px rgba(15, 43, 70, 0.06);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .callout h3 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #92400e;
+  }
+
+  .callout p {
+    font-size: 0.85rem;
+    color: #78350f;
+    line-height: 1.6;
+  }
+
+  .callout .pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 4px;
+  }
+
+  .pill {
+    background: #fef3c7;
+    border: 1px solid #fcd34d;
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #92400e;
+  }
+
+  @media (max-width: 640px) {
+    h1 { font-size: 1.2rem; }
+    .charts { grid-template-columns: 1fr; }
+    .cards { grid-template-columns: repeat(2, 1fr); }
+    .card .value { font-size: 1.6rem; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Cohort Delivery vs Registration — Timeline Dashboard</h1>
+<p class="subtitle">Monthly cohort overview &middot; Nov 2025 – Mar 2026</p>
+
+<!-- Metric Cards -->
+<section class="cards" id="cards"></section>
+
+<!-- 2×2 Chart Grid -->
+<section class="charts">
+  <div class="chart-box">
+    <h2>Schools by Cohort</h2>
+    <canvas id="chartSchools"></canvas>
+  </div>
+  <div class="chart-box">
+    <h2>Total Students &amp; Classes</h2>
+    <canvas id="chartTotals"></canvas>
+  </div>
+  <div class="chart-box">
+    <h2>Avg vs Median Students per Class</h2>
+    <canvas id="chartSPC"></canvas>
+  </div>
+  <div class="chart-box">
+    <h2>Avg Classes &amp; Students per School</h2>
+    <canvas id="chartPerSchool"></canvas>
+  </div>
+</section>
+
+<!-- No Delivery Date callout -->
+<div class="callout" id="callout"></div>
+
+<script>
+/* ── Data ── */
+const rows = [
+  { label: 'Nov 2025', schools: 30,  avg_classes: 12.7,  med_classes: 9.0,  avg_students: 137.7,  med_students: 47.5,  avg_spc: 10.84, med_spc: 6.45,  total_classes: 381,  total_students: 4131  },
+  { label: 'Dec 2025', schools: 192, avg_classes: 15.25, med_classes: 12.0, avg_students: 233.53, med_students: 131.5, avg_spc: 15.31, med_spc: 13.92, total_classes: 2928, total_students: 44838 },
+  { label: 'Jan 2026', schools: 127, avg_classes: 9.63,  med_classes: 8.0,  avg_students: 139.13, med_students: 61.0,  avg_spc: 14.45, med_spc: 10.56, total_classes: 1223, total_students: 17670 },
+  { label: 'Feb 2026', schools: 66,  avg_classes: 10.61, med_classes: 9.0,  avg_students: 117.35, med_students: 47.5,  avg_spc: 11.06, med_spc: 8.45,  total_classes: 700,  total_students: 7745  },
+  { label: 'Mar 2026', schools: 34,  avg_classes: 9.62,  med_classes: 9.5,  avg_students: 109.74, med_students: 57.5,  avg_spc: 11.41, med_spc: 10.0,  total_classes: 327,  total_students: 3731  }
+];
+
+const noDate = {
+  schools: 48, avg_classes: 2.81, med_classes: 0.0,
+  avg_students: 18.12, med_students: 0.0,
+  avg_spc: 6.44, med_spc: 4.75,
+  total_classes: 135, total_students: 870
+};
+
+const allRows = [...rows, noDate];
+const labels  = rows.map(r => r.label);
+
+const fmt = n => n.toLocaleString('en-US');
+
+/* ── Summary Cards ── */
+const totalSchools  = allRows.reduce((s, r) => s + r.schools, 0);
+const totalClasses  = allRows.reduce((s, r) => s + r.total_classes, 0);
+const totalStudents = allRows.reduce((s, r) => s + r.total_students, 0);
+const avgSPC        = (totalStudents / totalClasses).toFixed(1);
+
+const cardData = [
+  { value: fmt(totalSchools),  label: 'Total Schools' },
+  { value: fmt(totalClasses),  label: 'Total Classes' },
+  { value: fmt(totalStudents), label: 'Total Students' },
+  { value: avgSPC,             label: 'Avg Students / Class' }
+];
+
+document.getElementById('cards').innerHTML = cardData
+  .map(c => `<div class="card"><div class="value">${c.value}</div><div class="label">${c.label}</div></div>`)
+  .join('');
+
+/* ── No-Delivery Callout ── */
+document.getElementById('callout').innerHTML = `
+  <h3>⚠&nbsp; No Delivery Date — ${noDate.schools} Schools</h3>
+  <div class="pills">
+    <span class="pill">${fmt(noDate.total_classes)} Classes</span>
+    <span class="pill">${fmt(noDate.total_students)} Students</span>
+    <span class="pill">Avg ${noDate.avg_spc} students / class</span>
+    <span class="pill">Median ${noDate.med_spc} students / class</span>
+    <span class="pill">Avg ${noDate.avg_classes} classes / school</span>
+  </div>
+  <p>These schools have not yet received a delivery date and are excluded from the timeline charts above.</p>
+`;
+
+/* ── Global Chart Defaults ── */
+const C = {
+  blue:   '#0a7e8c',
+  teal:   '#14b8a6',
+  indigo: '#6366f1',
+  amber:  '#f59e0b',
+  slate:  '#64748b'
+};
+
+Chart.defaults.font.family = "'Inter', sans-serif";
+Chart.defaults.font.size   = 12;
+Chart.defaults.plugins.tooltip.backgroundColor = '#0f2b46';
+Chart.defaults.plugins.tooltip.titleColor      = '#e2e8f0';
+Chart.defaults.plugins.tooltip.bodyColor       = '#cbd5e1';
+Chart.defaults.plugins.tooltip.cornerRadius    = 8;
+Chart.defaults.plugins.tooltip.padding         = 10;
+Chart.defaults.plugins.tooltip.displayColors   = true;
+
+const legendOpts = {
+  position: 'bottom',
+  labels: { usePointStyle: true, padding: 14, color: '#374151' }
+};
+
+const xScale = { grid: { display: false }, ticks: { color: '#5a7184' } };
+const yScale = { grid: { color: '#e2e8f0' }, ticks: { color: '#5a7184' } };
+
+/* ── Chart 1: Schools by Cohort ── */
+new Chart(document.getElementById('chartSchools'), {
+  type: 'bar',
+  data: {
+    labels,
+    datasets: [{
+      label: 'Schools',
+      data: rows.map(r => r.schools),
+      backgroundColor: C.blue + 'cc',
+      borderColor: C.blue,
+      borderWidth: 1,
+      borderRadius: 6,
+      barPercentage: 0.6
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: true,
+    plugins: {
+      legend: legendOpts,
+      tooltip: {
+        callbacks: {
+          label: ctx => `  ${fmt(ctx.parsed.y)} schools`
+        }
+      }
+    },
+    scales: { x: xScale, y: { ...yScale, beginAtZero: true } }
+  }
+});
+
+/* ── Chart 2: Total Students & Classes (dual-axis combo) ── */
+new Chart(document.getElementById('chartTotals'), {
+  type: 'bar',
+  data: {
+    labels,
+    datasets: [
+      {
+        label: 'Total Classes',
+        data: rows.map(r => r.total_classes),
+        backgroundColor: C.teal + 'bb',
+        borderColor: C.teal,
+        borderWidth: 1,
+        borderRadius: 6,
+        barPercentage: 0.55,
+        yAxisID: 'y'
+      },
+      {
+        type: 'line',
+        label: 'Total Students',
+        data: rows.map(r => r.total_students),
+        borderColor: C.indigo,
+        backgroundColor: C.indigo + '22',
+        pointBackgroundColor: C.indigo,
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        tension: 0.3,
+        fill: true,
+        yAxisID: 'y1'
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: true,
+    plugins: {
+      legend: legendOpts,
+      tooltip: {
+        callbacks: {
+          label: ctx => `  ${ctx.dataset.label}: ${fmt(ctx.parsed.y)}`
+        }
+      }
+    },
+    scales: {
+      x: xScale,
+      y: {
+        position: 'left',
+        title: { display: true, text: 'Classes', color: C.teal, font: { weight: '600' } },
+        grid: { color: '#e2e8f0' },
+        ticks: { color: '#5a7184' },
+        beginAtZero: true
+      },
+      y1: {
+        position: 'right',
+        title: { display: true, text: 'Students', color: C.indigo, font: { weight: '600' } },
+        grid: { drawOnChartArea: false },
+        ticks: { color: '#5a7184' },
+        beginAtZero: true
+      }
+    }
+  }
+});
+
+/* ── Chart 3: Avg vs Median Students per Class ── */
+new Chart(document.getElementById('chartSPC'), {
+  type: 'line',
+  data: {
+    labels,
+    datasets: [
+      {
+        label: 'Avg Students / Class',
+        data: rows.map(r => r.avg_spc),
+        borderColor: C.blue,
+        backgroundColor: C.blue + '22',
+        pointBackgroundColor: C.blue,
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        tension: 0.3,
+        fill: true
+      },
+      {
+        label: 'Median Students / Class',
+        data: rows.map(r => r.med_spc),
+        borderColor: C.amber,
+        backgroundColor: C.amber + '22',
+        pointBackgroundColor: C.amber,
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        tension: 0.3,
+        fill: true
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: true,
+    plugins: {
+      legend: legendOpts,
+      tooltip: {
+        callbacks: {
+          label: ctx => `  ${ctx.dataset.label}: ${ctx.parsed.y}`
+        }
+      }
+    },
+    scales: { x: xScale, y: { ...yScale, beginAtZero: true } }
+  }
+});
+
+/* ── Chart 4: Avg Classes & Students per School ── */
+new Chart(document.getElementById('chartPerSchool'), {
+  type: 'bar',
+  data: {
+    labels,
+    datasets: [
+      {
+        label: 'Avg Classes / School',
+        data: rows.map(r => r.avg_classes),
+        backgroundColor: C.indigo + 'bb',
+        borderColor: C.indigo,
+        borderWidth: 1,
+        borderRadius: 6,
+        barPercentage: 0.45
+      },
+      {
+        label: 'Avg Students / School',
+        data: rows.map(r => r.avg_students),
+        backgroundColor: C.teal + 'bb',
+        borderColor: C.teal,
+        borderWidth: 1,
+        borderRadius: 6,
+        barPercentage: 0.45
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: true,
+    plugins: {
+      legend: legendOpts,
+      tooltip: {
+        callbacks: {
+          label: ctx => `  ${ctx.dataset.label}: ${ctx.parsed.y}`
+        }
+      }
+    },
+    scales: { x: xScale, y: { ...yScale, beginAtZero: true } }
+  }
+});
+</script>
+</body>
+</html>
