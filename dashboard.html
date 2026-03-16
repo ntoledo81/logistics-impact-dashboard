@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Logistics Impact Dashboard – Edify</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <style>
+    /* ── Reset & Base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Ubuntu', sans-serif;
+      background: #F2F2F2;
+      color: #242426;
+      min-height: 100vh;
+    }
+
+    /* ── Brand Variables ── */
+    :root {
+      --white:      #FFFFFF;
+      --dark-blue:  #4219B5;
+      --red:        #FF2726;
+      --yellow:     #FFC20E;
+      --green:      #00AA9E;
+      --light-blue: #4CD1F6;
+      --light-gray: #F2F2F2;
+      --black:      #242426;
+    }
+
+    /* ── Sticky Top Nav ── */
+    #top-nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 1000;
+      background: var(--dark-blue);
+      display: flex;
+      align-items: center;
+      gap: 0;
+      padding: 0 24px;
+      height: 56px;
+      box-shadow: 0 2px 12px rgba(66,25,181,0.18);
+    }
+    #top-nav .nav-brand {
+      font-weight: 700;
+      font-size: 1.05rem;
+      color: var(--white);
+      letter-spacing: 0.04em;
+      margin-right: 32px;
+      white-space: nowrap;
+    }
+    #top-nav .nav-links {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+    #top-nav .nav-links a {
+      color: rgba(255,255,255,0.75);
+      text-decoration: none;
+      font-size: 0.82rem;
+      font-weight: 400;
+      padding: 6px 12px;
+      border-radius: 20px;
+      transition: background 0.2s, color 0.2s;
+      white-space: nowrap;
+    }
+    #top-nav .nav-links a:hover,
+    #top-nav .nav-links a.active {
+      background: rgba(255,255,255,0.15);
+      color: var(--white);
+    }
+
+    /* ── Main Layout ── */
+    .main-wrapper {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 80px 24px 60px;
+    }
+
+    /* ── Page Header ── */
+    .page-header {
+      text-align: center;
+      padding: 40px 0 48px;
+    }
+    .page-header h1 {
+      font-size: 2.1rem;
+      font-weight: 700;
+      color: var(--dark-blue);
+      line-height: 1.2;
+    }
+    .page-header p {
+      margin-top: 10px;
+      font-size: 1rem;
+      color: #555;
+      font-weight: 300;
+    }
+
+    /* ── Timeline ── */
+    .timeline {
+      position: relative;
+      padding-left: 52px;
+    }
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 18px;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      background: linear-gradient(to bottom, var(--dark-blue), var(--light-blue));
+      border-radius: 2px;
+    }
+
+    /* ── Timeline Section ── */
+    .tl-section {
+      position: relative;
+      margin-bottom: 56px;
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.55s ease, transform 0.55s ease;
+    }
+    .tl-section.visible {
+      opacity: 1;
+      transform: none;
+    }
+    .tl-dot {
+      position: absolute;
+      left: -42px;
+      top: 18px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--dark-blue);
+      border: 3px solid var(--white);
+      box-shadow: 0 0 0 3px var(--dark-blue);
+      z-index: 1;
+    }
+    .tl-section-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--dark-blue);
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .tl-section-title .step-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--dark-blue);
+      color: var(--white);
+      font-size: 0.78rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--white);
+      border-radius: 14px;
+      padding: 24px;
+      box-shadow: 0 2px 16px rgba(66,25,181,0.07);
+    }
+
+    /* ── KPI Grid ── */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 16px;
+    }
+    .kpi-card {
+      background: var(--white);
+      border-radius: 14px;
+      padding: 20px 18px 18px;
+      box-shadow: 0 2px 16px rgba(66,25,181,0.07);
+      border-top: 4px solid var(--dark-blue);
+      text-align: center;
+      transition: transform 0.2s;
+    }
+    .kpi-card:hover { transform: translateY(-3px); }
+    .kpi-card.accent-red   { border-top-color: var(--red); }
+    .kpi-card.accent-yellow{ border-top-color: var(--yellow); }
+    .kpi-card.accent-green { border-top-color: var(--green); }
+    .kpi-card.accent-lblue { border-top-color: var(--light-blue); }
+    .kpi-value {
+      font-size: 2.2rem;
+      font-weight: 700;
+      color: var(--dark-blue);
+      line-height: 1;
+    }
+    .kpi-card.accent-red   .kpi-value { color: var(--red); }
+    .kpi-card.accent-yellow .kpi-value { color: #b38500; }
+    .kpi-card.accent-green .kpi-value { color: var(--green); }
+    .kpi-card.accent-lblue .kpi-value { color: #1b9dbf; }
+    .kpi-label {
+      margin-top: 6px;
+      font-size: 0.8rem;
+      color: #666;
+      font-weight: 400;
+      line-height: 1.3;
+    }
+    .kpi-sub {
+      margin-top: 4px;
+      font-size: 0.72rem;
+      color: #aaa;
+    }
+
+    /* ── Toggle ── */
+    .toggle-wrap {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 14px;
+    }
+    .toggle-btn-group {
+      display: inline-flex;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1.5px solid var(--dark-blue);
+    }
+    .toggle-btn {
+      padding: 6px 18px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: 'Ubuntu', sans-serif;
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: var(--dark-blue);
+      transition: background 0.18s, color 0.18s;
+    }
+    .toggle-btn.active {
+      background: var(--dark-blue);
+      color: var(--white);
+    }
+    .toggle-btn:focus { outline: none; }
+
+    /* ── Chart Container ── */
+    .chart-wrap {
+      position: relative;
+      width: 100%;
+    }
+    .chart-wrap canvas { max-width: 100%; }
+
+    /* ── Correlation Cards ── */
+    .corr-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 14px;
+    }
+    .corr-card {
+      background: var(--white);
+      border-radius: 12px;
+      padding: 16px 18px;
+      box-shadow: 0 2px 12px rgba(66,25,181,0.07);
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+    .corr-badge {
+      min-width: 64px;
+      height: 64px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--white);
+      flex-shrink: 0;
+    }
+    .corr-badge.sig-high { background: var(--red); }
+    .corr-badge.sig-med  { background: var(--yellow); color: var(--black); }
+    .corr-badge.sig-low  { background: #bbb; }
+    .corr-info h4 {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--black);
+      margin-bottom: 4px;
+    }
+    .corr-info p {
+      font-size: 0.78rem;
+      color: #666;
+      line-height: 1.4;
+    }
+    .corr-sig {
+      display: inline-block;
+      margin-top: 5px;
+      font-size: 0.7rem;
+      font-weight: 500;
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+    .corr-sig.p001 { background: #ffe0e0; color: #c00; }
+    .corr-sig.p01  { background: #fff3cd; color: #7a5000; }
+    .corr-sig.ns   { background: #e8e8e8; color: #666; }
+
+    /* ── Comparison Summary Bar ── */
+    .compare-summary {
+      display: grid;
+      grid-template-columns: repeat(3,1fr);
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+    .compare-card {
+      background: var(--white);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 2px 12px rgba(66,25,181,0.07);
+      text-align: center;
+    }
+    .compare-card h4 {
+      font-size: 0.8rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .compare-card .big-num {
+      font-size: 1.6rem;
+      font-weight: 700;
+    }
+    .compare-card p { font-size: 0.72rem; color: #888; margin-top: 4px; }
+
+    /* ── Insight Box ── */
+    .insight-box {
+      background: linear-gradient(135deg, #f0ecff, #e8f8fb);
+      border-left: 4px solid var(--dark-blue);
+      border-radius: 0 10px 10px 0;
+      padding: 14px 18px;
+      margin-top: 16px;
+      font-size: 0.85rem;
+      color: #333;
+      line-height: 1.6;
+    }
+    .insight-box strong { color: var(--dark-blue); }
+
+    /* ── Footer ── */
+    .page-footer {
+      text-align: center;
+      padding: 32px 0 16px;
+      font-size: 0.78rem;
+      color: #aaa;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      .main-wrapper { padding: 72px 12px 40px; }
+      .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+      .compare-summary { grid-template-columns: 1fr; }
+      .corr-grid { grid-template-columns: 1fr; }
+      #top-nav .nav-links a { font-size: 0.74rem; padding: 5px 8px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════ STICKY TOP NAV ══════════ -->
+<nav id="top-nav">
+  <span class="nav-brand">📊 Edify Dashboard</span>
+  <div class="nav-links">
+    <a href="#sec-overview"    data-sec="sec-overview">Overview</a>
+    <a href="#sec-monthly"     data-sec="sec-monthly">Monthly</a>
+    <a href="#sec-timing"      data-sec="sec-timing">Timing</a>
+    <a href="#sec-weekly"      data-sec="sec-weekly">Weekly</a>
+    <a href="#sec-comparison"  data-sec="sec-comparison">Comparison</a>
+    <a href="#sec-correlation" data-sec="sec-correlation">Correlations</a>
+  </div>
+</nav>
+
+<div class="main-wrapper">
+
+  <!-- ══════════ PAGE HEADER ══════════ -->
+  <header class="page-header">
+    <h1>Logistics Impact Dashboard</h1>
+    <p>Cohort analysis of school delivery timing and engagement — 2025/2026</p>
+  </header>
+
+  <!-- ══════════ TIMELINE ══════════ -->
+  <div class="timeline">
+
+    <!-- ── 1. OVERVIEW ── -->
+    <section class="tl-section" id="sec-overview">
+      <div class="tl-dot"></div>
+      <div class="tl-section-title">
+        <span class="step-badge">1</span> Overview &amp; Key Metrics
+      </div>
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-value" data-target="809">0</div>
+          <div class="kpi-label">Total Schools<br>(Analytical View)</div>
+        </div>
+        <div class="kpi-card accent-green">
+          <div class="kpi-value" data-target="449">0</div>
+          <div class="kpi-label">Schools with Delivery</div>
+          <div class="kpi-sub">at least 1 delivery</div>
+        </div>
+        <div class="kpi-card accent-red">
+          <div class="kpi-value" data-target="48">0</div>
+          <div class="kpi-label">Pending / Not Delivered</div>
+          <div class="kpi-sub">awaiting delivery</div>
+        </div>
+        <div class="kpi-card accent-yellow">
+          <div class="kpi-value" data-target="312">0</div>
+          <div class="kpi-label">No Order in System</div>
+          <div class="kpi-sub">no purchase order</div>
+        </div>
+        <div class="kpi-card accent-lblue">
+          <div class="kpi-value" data-target="87" data-suffix=".3%">0</div>
+          <div class="kpi-label">Active Rate</div>
+          <div class="kpi-sub">among delivered schools</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-value" data-target="78115">0</div>
+          <div class="kpi-label">Total Students</div>
+          <div class="kpi-sub">delivered schools</div>
+        </div>
+        <div class="kpi-card accent-green">
+          <div class="kpi-value" data-target="5559">0</div>
+          <div class="kpi-label">Total Classes</div>
+          <div class="kpi-sub">delivered schools</div>
+        </div>
+        <div class="kpi-card accent-lblue">
+          <div class="kpi-value" data-target="519">0</div>
+          <div class="kpi-label">Total Deliveries</div>
+          <div class="kpi-sub">including all orders</div>
+        </div>
+      </div>
+      <div class="insight-box">
+        <strong>Key snapshot:</strong> Of 809 schools in the analytical view, <strong>449 (55.5%)</strong> have received at least one delivery and show an <strong>87.3% active rate</strong>. Another 312 schools have no order in the system and 48 are awaiting delivery.
+      </div>
+    </section>
+
+    <!-- ── 2. MONTHLY COHORT ── -->
+    <section class="tl-section" id="sec-monthly">
+      <div class="tl-dot"></div>
+      <div class="tl-section-title">
+        <span class="step-badge">2</span> Monthly Cohort Timeline
+      </div>
+      <div class="card">
+        <div class="toggle-wrap">
+          <div class="toggle-btn-group">
+            <button class="toggle-btn active" onclick="setMonthlyMetric('alunos', this)">Students</button>
+            <button class="toggle-btn" onclick="setMonthlyMetric('turmas', this)">Classes</button>
+          </div>
+        </div>
+        <div class="chart-wrap" style="height:320px;">
+          <canvas id="chartMonthly"></canvas>
+        </div>
+      </div>
+      <div class="insight-box">
+        <strong>Dec 2025 cohort dominates:</strong> With 192 schools, the December cohort accounts for the largest onboarding wave. The Jan–Mar 2026 cohorts show steadily lower school counts but comparable class/student averages — suggesting a healthy late-onboarding tail.
+      </div>
+    </section>
+
+    <!-- ── 3. TIMING BUCKET ── -->
+    <section class="tl-section" id="sec-timing">
+      <div class="tl-dot"></div>
+      <div class="tl-section-title">
+        <span class="step-badge">3</span> Delivery Timing vs Engagement
+      </div>
+      <div class="card">
+        <div class="chart-wrap" style="height:370px;">
+          <canvas id="chartTiming"></canvas>
+        </div>
+      </div>
+      <div class="insight-box">
+        <strong>Earlier deliveries = higher engagement:</strong> Schools receiving devices before the holiday break (&le; Dec 19) and during holidays show the highest active rates (89–92%) and completion rates (83–86%). Late deliveries (after Feb 16) drop to 72.7% active. Pending/No-Order groups show dramatically lower engagement.
+      </div>
+    </section>
+
+    <!-- ── 4. WEEKLY ── -->
+    <section class="tl-section" id="sec-weekly">
+      <div class="tl-dot"></div>
+      <div class="tl-section-title">
+        <span class="step-badge">4</span> Weekly Onboarding Granularity
+      </div>
+      <div class="card">
+        <div class="toggle-wrap">
+          <div class="toggle-btn-group">
+            <button class="toggle-btn active" onclick="setWeeklyMetric('alunos', this)">Avg Students</button>
+            <button class="toggle-btn" onclick="setWeeklyMetric('turmas', this)">Avg Classes</button>
+          </div>
+        </div>
+        <div class="chart-wrap" style="height:320px;">
+          <canvas id="chartWeekly"></canvas>
+        </div>
+      </div>
+      <div class="insight-box">
+        <strong>W01/2026 spike:</strong> Week 1 of 2026 (Jan 2–8) shows the highest average students per school (430.3) driven by 9 large schools. W52 and W50 of 2025 also show strong numbers, confirming that early adopters tend to be larger institutions.
+      </div>
+    </section>
+
+    <!-- ── 5. COMPARISON ── -->
+    <section class="tl-section" id="sec-comparison">
+      <div class="tl-dot"></div>
+      <div class="tl-section-title">
+        <span class="step-badge">5</span> Delivered vs Not-Delivered Comparison
+      </div>
+      <div class="compare-summary">
+        <div class="compare-card" style="border-top:4px solid var(--green);">
+          <h4 style="color:var(--green);">✓ Delivered</h4>
+          <div class="big-num" style="color:var(--green);">449</div>
+          <p>schools · 87.3% active · avg 12.4 classes</p>
+        </div>
+        <div class="compare-card" style="border-top:4px solid var(--red);">
+          <h4 style="color:var(--red);">⏳ Not Delivered</h4>
+          <div class="big-num" style="color:var(--red);">48</div>
+          <p>schools · 33.3% active · avg 2.8 classes</p>
+        </div>
+        <div class="compare-card" style="border-top:4px solid var(--yellow);">
+          <h4 style="color:#b38500;">⊘ No Order</h4>
+          <div class="big-num" style="color:#b38500;">312</div>
+          <p>schools · 51.9% active · avg 5.7 classes</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="toggle-wrap">
+          <div class="toggle-btn-group">
+            <button class="toggle-btn active" onclick="setCompareMetric('alunos', this)">Students</button>
+            <button class="toggle-btn" onclick="setCompareMetric('turmas', this)">Classes</button>
+          </div>
+        </div>
+        <div class="chart-wrap" style="height:300px;">
+          <canvas id="chartCompare"></canvas>
+        </div>
+      </div>
+      <div class="insight-box">
+        <strong>Delivery drives activation:</strong> Delivered schools have <strong>4.4× more classes</strong> and <strong>9.6× more students</strong> on average than not-delivered schools, and <strong>2.6× higher active rates</strong> (87.3% vs 33.3%). This strongly suggests logistics fulfillment is a critical driver of platform engagement.
+      </div>
+    </section>
+
+    <!-- ── 6. CORRELATION ── -->
+    <section class="tl-section" id="sec-correlation">
+      <div class="tl-dot"></div>
+      <div class="tl-section-title">
+        <span class="step-badge">6</span> Correlation Insights
+      </div>
+      <div class="corr-grid">
+        <div class="corr-card">
+          <div class="corr-badge sig-high">r = −0.155</div>
+          <div class="corr-info">
+            <h4>Delivery Delay → Total Classes</h4>
+            <p>Later delivery is associated with fewer total classes registered on the platform.</p>
+            <span class="corr-sig p001">p &lt; 0.001 ✓</span>
+          </div>
+        </div>
+        <div class="corr-card">
+          <div class="corr-badge sig-high">r = −0.137</div>
+          <div class="corr-info">
+            <h4>Delivery Delay → Total Students</h4>
+            <p>Later delivery correlates with fewer total students enrolled.</p>
+            <span class="corr-sig p01">p &lt; 0.01 ✓</span>
+          </div>
+        </div>
+        <div class="corr-card">
+          <div class="corr-badge sig-high">r = −0.155</div>
+          <div class="corr-info">
+            <h4>Delivery Delay → Active Classes</h4>
+            <p>Schools receiving devices later have fewer active classes.</p>
+            <span class="corr-sig p001">p &lt; 0.001 ✓</span>
+          </div>
+        </div>
+        <div class="corr-card">
+          <div class="corr-badge sig-high">r = −0.137</div>
+          <div class="corr-info">
+            <h4>Delivery Delay → Active Students</h4>
+            <p>Later delivery associated with fewer active students.</p>
+            <span class="corr-sig p01">p &lt; 0.01 ✓</span>
+          </div>
+        </div>
+        <div class="corr-card">
+          <div class="corr-badge sig-med">r = −0.123</div>
+          <div class="corr-info">
+            <h4>Completion Rate → Total Classes</h4>
+            <p>Higher completion rate weakly associated with fewer classes (size effect).</p>
+            <span class="corr-sig p01">p &lt; 0.01 ✓</span>
+          </div>
+        </div>
+        <div class="corr-card">
+          <div class="corr-badge sig-low">r = −0.075</div>
+          <div class="corr-info">
+            <h4>Completion Rate → Total Students</h4>
+            <p>Relationship between completion rate and student count is not statistically significant.</p>
+            <span class="corr-sig ns">Not significant</span>
+          </div>
+        </div>
+      </div>
+      <div class="insight-box" style="margin-top:18px;">
+        <strong>449 schools with delivery dates</strong> were analysed. Delivery delay was measured in days from the first delivery date (2025-11-17), ranging 0–114 days. All significant correlations are negative — confirming that <strong>earlier delivery consistently predicts better platform engagement</strong>, even when controlling for school size.
+      </div>
+    </section>
+
+  </div><!-- /timeline -->
+
+  <footer class="page-footer">
+    Edify · Logistics Impact Dashboard · 2026 · Data embedded — no external CSV required
+  </footer>
+
+</div><!-- /main-wrapper -->
+
+<script>
+/* ══════════════════════════════════════════
+   DATA
+══════════════════════════════════════════ */
+const monthlyCohort = [
+  { cohort:'Nov 2025', n_schools:30,  avg_turmas:12.7,  avg_alunos:137.7,  total_turmas:381,  total_alunos:4131  },
+  { cohort:'Dec 2025', n_schools:192, avg_turmas:15.25, avg_alunos:233.53, total_turmas:2928, total_alunos:44838 },
+  { cohort:'Jan 2026', n_schools:127, avg_turmas:9.63,  avg_alunos:139.13, total_turmas:1223, total_alunos:17670 },
+  { cohort:'Feb 2026', n_schools:66,  avg_turmas:10.61, avg_alunos:117.35, total_turmas:700,  total_alunos:7745  },
+  { cohort:'Mar 2026', n_schools:34,  avg_turmas:9.62,  avg_alunos:109.74, total_turmas:327,  total_alunos:3731  },
+  { cohort:'No Order', n_schools:312, avg_turmas:5.69,  avg_alunos:95.25,  total_turmas:1775, total_alunos:29717 },
+  { cohort:'Not Delivered', n_schools:48, avg_turmas:2.81, avg_alunos:18.12, total_turmas:135, total_alunos:870  },
+];
+
+const timingBuckets = [
+  { bucket:'Before holidays\n(≤ Dec 19)',      schools:193, avg_turmas:14.5, avg_alunos:205.3, pct_active:89.6, avg_completion:83.2 },
+  { bucket:'Holidays\n(Dec 20 – Jan 15)',       schools:94,  avg_turmas:11.6, avg_alunos:188.0, pct_active:91.5, avg_completion:85.7 },
+  { bucket:'Pre-school year\n(Jan 16 – Feb 1)', schools:62,  avg_turmas:10.2, avg_alunos:150.8, pct_active:80.6, avg_completion:77.9 },
+  { bucket:'First 2 weeks\n(Feb 2–15)',         schools:33,  avg_turmas:11.7, avg_alunos:134.1, pct_active:84.8, avg_completion:78.0 },
+  { bucket:'Late\n(Feb 16 – Mar 1)',            schools:33,  avg_turmas:9.5,  avg_alunos:100.6, pct_active:72.7, avg_completion:79.1 },
+  { bucket:'Very late\n(After Mar 1)',          schools:34,  avg_turmas:9.6,  avg_alunos:109.7, pct_active:91.2, avg_completion:76.1 },
+  { bucket:'Not Delivered\n(pending)',          schools:48,  avg_turmas:2.8,  avg_alunos:18.1,  pct_active:33.3, avg_completion:0.0  },
+  { bucket:'No Order\nin system',               schools:312, avg_turmas:5.7,  avg_alunos:95.2,  pct_active:51.9, avg_completion:0.0  },
+];
+
+const weeklyCohort = [
+  { week:'W47/25', schools:4,   avg_turmas:18.8, avg_alunos:250.5 },
+  { week:'W48/25', schools:26,  avg_turmas:11.8, avg_alunos:120.3 },
+  { week:'W49/25', schools:33,  avg_turmas:11.0, avg_alunos:166.4 },
+  { week:'W50/25', schools:45,  avg_turmas:16.6, avg_alunos:233.3 },
+  { week:'W51/25', schools:85,  avg_turmas:15.4, avg_alunos:229.4 },
+  { week:'W52/25', schools:20,  avg_turmas:16.2, avg_alunos:274.0 },
+  { week:'W01/26', schools:9,   avg_turmas:20.0, avg_alunos:430.3 },
+  { week:'W02/26', schools:53,  avg_turmas:8.3,  avg_alunos:97.5  },
+  { week:'W03/26', schools:24,  avg_turmas:13.0, avg_alunos:270.2 },
+  { week:'W04/26', schools:21,  avg_turmas:9.9,  avg_alunos:146.7 },
+  { week:'W05/26', schools:29,  avg_turmas:9.1,  avg_alunos:101.3 },
+  { week:'W06/26', schools:26,  avg_turmas:10.0, avg_alunos:114.6 },
+  { week:'W07/26', schools:7,   avg_turmas:18.1, avg_alunos:206.7 },
+  { week:'W08/26', schools:3,   avg_turmas:6.7,  avg_alunos:52.7  },
+  { week:'W09/26', schools:30,  avg_turmas:9.8,  avg_alunos:105.4 },
+  { week:'W10/26', schools:29,  avg_turmas:9.1,  avg_alunos:90.1  },
+  { week:'W11/26', schools:5,   avg_turmas:12.6, avg_alunos:223.8 },
+];
+
+const compareData = {
+  delivered:     { schools:449, avg_turmas:12.4, avg_alunos:174.0, pct_active:87.3, total_turmas:5559,  total_alunos:78115 },
+  notDelivered:  { schools:48,  avg_turmas:2.8,  avg_alunos:18.1,  pct_active:33.3, total_turmas:135,   total_alunos:870   },
+  noOrder:       { schools:312, avg_turmas:5.7,  avg_alunos:95.2,  pct_active:51.9, total_turmas:1775,  total_alunos:29717 },
+};
+
+/* ══════════════════════════════════════════
+   CHART.JS DEFAULTS
+══════════════════════════════════════════ */
+Chart.defaults.font.family = "'Ubuntu', sans-serif";
+Chart.defaults.color = '#555';
+Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(36,36,38,0.92)';
+Chart.defaults.plugins.tooltip.titleFont = { family: "'Ubuntu', sans-serif", weight: '700', size: 13 };
+Chart.defaults.plugins.tooltip.bodyFont  = { family: "'Ubuntu', sans-serif", size: 12 };
+Chart.defaults.plugins.tooltip.padding = 10;
+Chart.defaults.plugins.tooltip.cornerRadius = 8;
+
+const COLORS = {
+  darkBlue:  '#4219B5',
+  red:       '#FF2726',
+  yellow:    '#FFC20E',
+  green:     '#00AA9E',
+  lightBlue: '#4CD1F6',
+  black:     '#242426',
+};
+
+/* ══════════════════════════════════════════
+   MONTHLY COHORT CHART
+══════════════════════════════════════════ */
+let monthlyMetric = 'alunos';
+let monthlyChart = null;
+
+function buildMonthlyChart() {
+  const ctx = document.getElementById('chartMonthly').getContext('2d');
+  const labels = monthlyCohort.map(d => d.cohort);
+  const barData = monthlyCohort.map(d => d.n_schools);
+  const lineData = monthlyCohort.map(d => monthlyMetric === 'alunos' ? d.avg_alunos : d.avg_turmas);
+  const lineLabel = monthlyMetric === 'alunos' ? 'Avg Students/School' : 'Avg Classes/School';
+
+  if (monthlyChart) monthlyChart.destroy();
+  monthlyChart = new Chart(ctx, {
+    data: {
+      labels,
+      datasets: [
+        {
+          type: 'bar',
+          label: 'Schools in Cohort',
+          data: barData,
+          backgroundColor: [
+            COLORS.green, COLORS.darkBlue, COLORS.lightBlue,
+            COLORS.yellow, COLORS.green + 'bb',
+            '#aaa', COLORS.red,
+          ],
+          borderRadius: 6,
+          yAxisID: 'yLeft',
+          order: 2,
+        },
+        {
+          type: 'line',
+          label: lineLabel,
+          data: lineData,
+          borderColor: COLORS.red,
+          backgroundColor: 'rgba(255,39,38,0.12)',
+          pointBackgroundColor: COLORS.red,
+          pointRadius: 5,
+          pointHoverRadius: 8,
+          borderWidth: 2.5,
+          tension: 0.35,
+          fill: false,
+          yAxisID: 'yRight',
+          order: 1,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'top', labels: { boxWidth: 14, padding: 14 } },
+        tooltip: {
+          callbacks: {
+            afterBody: (items) => {
+              const idx = items[0].dataIndex;
+              const d = monthlyCohort[idx];
+              return [
+                `Avg Classes: ${d.avg_turmas}`,
+                `Avg Students: ${d.avg_alunos}`,
+                `Total Classes: ${d.total_turmas.toLocaleString()}`,
+                `Total Students: ${d.total_alunos.toLocaleString()}`,
+              ];
+            },
+          },
+        },
+      },
+      scales: {
+        yLeft:  { position: 'left',  title: { display: true, text: 'Schools' },    grid: { color: '#eee' } },
+        yRight: { position: 'right', title: { display: true, text: lineLabel },    grid: { display: false } },
+        x: { grid: { display: false } },
+      },
+    },
+  });
+}
+
+function setMonthlyMetric(metric, btn) {
+  monthlyMetric = metric;
+  btn.closest('.toggle-btn-group').querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  buildMonthlyChart();
+}
+
+/* ══════════════════════════════════════════
+   TIMING BUCKET CHART
+══════════════════════════════════════════ */
+function buildTimingChart() {
+  const ctx = document.getElementById('chartTiming').getContext('2d');
+  const labels = timingBuckets.map(d => d.bucket.replace('\n', ' '));
+  const activeData = timingBuckets.map(d => d.pct_active);
+  const completionData = timingBuckets.map(d => d.avg_completion);
+  const schoolData = timingBuckets.map(d => d.schools);
+
+  new Chart(ctx, {
+    data: {
+      labels,
+      datasets: [
+        {
+          type: 'bar',
+          label: '% Active Schools',
+          data: activeData,
+          backgroundColor: timingBuckets.map(d =>
+            d.pct_active >= 85 ? COLORS.green :
+            d.pct_active >= 70 ? COLORS.yellow :
+            COLORS.red
+          ),
+          borderRadius: 5,
+          yAxisID: 'yPct',
+          order: 2,
+          barPercentage: 0.45,
+          categoryPercentage: 0.85,
+        },
+        {
+          type: 'bar',
+          label: 'Avg Completion %',
+          data: completionData,
+          backgroundColor: timingBuckets.map(d =>
+            d.avg_completion >= 80 ? COLORS.lightBlue + 'cc' :
+            d.avg_completion >= 50 ? COLORS.lightBlue + '88' :
+            '#ddd'
+          ),
+          borderRadius: 5,
+          yAxisID: 'yPct',
+          order: 3,
+          barPercentage: 0.45,
+          categoryPercentage: 0.85,
+        },
+        {
+          type: 'line',
+          label: 'Schools Count',
+          data: schoolData,
+          borderColor: COLORS.darkBlue,
+          backgroundColor: 'rgba(66,25,181,0.1)',
+          pointBackgroundColor: COLORS.darkBlue,
+          pointRadius: 5,
+          pointHoverRadius: 8,
+          borderWidth: 2,
+          tension: 0.3,
+          yAxisID: 'yCount',
+          order: 1,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'top', labels: { boxWidth: 13, padding: 14 } },
+        tooltip: {
+          callbacks: {
+            afterBody: (items) => {
+              const idx = items[0].dataIndex;
+              const d = timingBuckets[idx];
+              return [
+                `Avg Classes: ${d.avg_turmas}`,
+                `Avg Students: ${d.avg_alunos}`,
+              ];
+            },
+          },
+        },
+      },
+      scales: {
+        yPct:   { position: 'left',  min: 0, max: 110, title: { display: true, text: 'Percentage (%)' }, grid: { color: '#eee' } },
+        yCount: { position: 'right', title: { display: true, text: 'Schools' }, grid: { display: false } },
+        x: {
+          grid: { display: false },
+          ticks: { font: { size: 10.5 }, maxRotation: 30 },
+        },
+      },
+    },
+  });
+}
+
+/* ══════════════════════════════════════════
+   WEEKLY CHART
+══════════════════════════════════════════ */
+let weeklyMetric = 'alunos';
+let weeklyChart = null;
+
+function buildWeeklyChart() {
+  const ctx = document.getElementById('chartWeekly').getContext('2d');
+  const labels = weeklyCohort.map(d => d.week);
+  const lineData = weeklyCohort.map(d => weeklyMetric === 'alunos' ? d.avg_alunos : d.avg_turmas);
+  const schoolData = weeklyCohort.map(d => d.schools);
+  const lineLabel = weeklyMetric === 'alunos' ? 'Avg Students/School' : 'Avg Classes/School';
+
+  if (weeklyChart) weeklyChart.destroy();
+  weeklyChart = new Chart(ctx, {
+    data: {
+      labels,
+      datasets: [
+        {
+          type: 'bar',
+          label: 'Schools Onboarded',
+          data: schoolData,
+          backgroundColor: COLORS.lightBlue + '99',
+          borderColor: COLORS.lightBlue,
+          borderWidth: 1,
+          borderRadius: 4,
+          yAxisID: 'yCount',
+          order: 2,
+        },
+        {
+          type: 'line',
+          label: lineLabel,
+          data: lineData,
+          borderColor: COLORS.darkBlue,
+          backgroundColor: 'rgba(66,25,181,0.10)',
+          pointBackgroundColor: COLORS.darkBlue,
+          pointRadius: 4,
+          pointHoverRadius: 7,
+          borderWidth: 2.5,
+          tension: 0.35,
+          fill: true,
+          yAxisID: 'yAvg',
+          order: 1,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'top', labels: { boxWidth: 13, padding: 14 } },
+        tooltip: {
+          callbacks: {
+            afterBody: (items) => {
+              const idx = items[0].dataIndex;
+              const d = weeklyCohort[idx];
+              return [
+                `Avg Classes: ${d.avg_turmas}`,
+                `Avg Students: ${d.avg_alunos}`,
+              ];
+            },
+          },
+        },
+      },
+      scales: {
+        yCount: { position: 'right', title: { display: true, text: 'Schools' }, grid: { display: false } },
+        yAvg:   { position: 'left',  title: { display: true, text: lineLabel }, grid: { color: '#eee' } },
+        x: { grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 45 } },
+      },
+    },
+  });
+}
+
+function setWeeklyMetric(metric, btn) {
+  weeklyMetric = metric;
+  btn.closest('.toggle-btn-group').querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  buildWeeklyChart();
+}
+
+/* ══════════════════════════════════════════
+   COMPARISON CHART
+══════════════════════════════════════════ */
+let compareMetric = 'alunos';
+let compareChart = null;
+
+function buildCompareChart() {
+  const ctx = document.getElementById('chartCompare').getContext('2d');
+  const groups = ['Delivered', 'Not Delivered', 'No Order'];
+  const meanData = compareMetric === 'alunos'
+    ? [compareData.delivered.avg_alunos, compareData.notDelivered.avg_alunos, compareData.noOrder.avg_alunos]
+    : [compareData.delivered.avg_turmas, compareData.notDelivered.avg_turmas, compareData.noOrder.avg_turmas];
+  const activeData = [compareData.delivered.pct_active, compareData.notDelivered.pct_active, compareData.noOrder.pct_active];
+  const meanLabel = compareMetric === 'alunos' ? 'Avg Students/School' : 'Avg Classes/School';
+
+  if (compareChart) compareChart.destroy();
+  compareChart = new Chart(ctx, {
+    data: {
+      labels: groups,
+      datasets: [
+        {
+          type: 'bar',
+          label: meanLabel,
+          data: meanData,
+          backgroundColor: [COLORS.green + 'cc', COLORS.red + 'cc', COLORS.yellow + 'cc'],
+          borderColor: [COLORS.green, COLORS.red, COLORS.yellow],
+          borderWidth: 1.5,
+          borderRadius: 6,
+          yAxisID: 'yMean',
+          order: 2,
+        },
+        {
+          type: 'line',
+          label: '% Active',
+          data: activeData,
+          borderColor: COLORS.darkBlue,
+          backgroundColor: 'rgba(66,25,181,0.10)',
+          pointBackgroundColor: COLORS.darkBlue,
+          pointRadius: 7,
+          pointHoverRadius: 10,
+          borderWidth: 2.5,
+          yAxisID: 'yPct',
+          order: 1,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'top', labels: { boxWidth: 13, padding: 14 } },
+        tooltip: {
+          callbacks: {
+            afterBody: (items) => {
+              const idx = items[0].dataIndex;
+              const keys = ['delivered','notDelivered','noOrder'];
+              const d = compareData[keys[idx]];
+              return [
+                `Schools: ${d.schools}`,
+                `Total Classes: ${d.total_turmas.toLocaleString()}`,
+                `Total Students: ${d.total_alunos.toLocaleString()}`,
+              ];
+            },
+          },
+        },
+      },
+      scales: {
+        yMean: { position: 'left',  title: { display: true, text: meanLabel }, grid: { color: '#eee' } },
+        yPct:  { position: 'right', min: 0, max: 110, title: { display: true, text: '% Active' }, grid: { display: false } },
+        x: { grid: { display: false } },
+      },
+    },
+  });
+}
+
+function setCompareMetric(metric, btn) {
+  compareMetric = metric;
+  btn.closest('.toggle-btn-group').querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  buildCompareChart();
+}
+
+/* ══════════════════════════════════════════
+   ANIMATED KPI COUNTERS
+══════════════════════════════════════════ */
+function animateCounter(el) {
+  const target = parseInt(el.dataset.target, 10);
+  const suffix = el.dataset.suffix || '';
+  const duration = 1400;
+  const start = performance.now();
+  function update(now) {
+    const progress = Math.min((now - start) / duration, 1);
+    const ease = 1 - Math.pow(1 - progress, 3);
+    const current = Math.round(ease * target);
+    el.textContent = current.toLocaleString() + suffix;
+    if (progress < 1) requestAnimationFrame(update);
+  }
+  requestAnimationFrame(update);
+}
+
+/* ══════════════════════════════════════════
+   INTERSECTION OBSERVER – REVEAL & COUNTERS
+══════════════════════════════════════════ */
+const sectionsMap = {};
+document.querySelectorAll('.tl-section').forEach(sec => {
+  sectionsMap[sec.id] = sec;
+});
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const sec = entry.target;
+      sec.classList.add('visible');
+      // animate counters inside this section
+      sec.querySelectorAll('.kpi-value[data-target]').forEach(el => {
+        if (!el.dataset.counted) {
+          el.dataset.counted = '1';
+          animateCounter(el);
+        }
+      });
+    }
+  });
+}, { threshold: 0.12 });
+
+document.querySelectorAll('.tl-section').forEach(sec => observer.observe(sec));
+
+/* ══════════════════════════════════════════
+   ACTIVE NAV HIGHLIGHT ON SCROLL
+══════════════════════════════════════════ */
+const navLinks = document.querySelectorAll('#top-nav .nav-links a');
+const sectionEls = Array.from(document.querySelectorAll('.tl-section'));
+
+function updateActiveNav() {
+  const scrollY = window.scrollY + 120;
+  let current = sectionEls[0].id;
+  for (const sec of sectionEls) {
+    if (sec.offsetTop <= scrollY) current = sec.id;
+  }
+  navLinks.forEach(a => {
+    a.classList.toggle('active', a.dataset.sec === current);
+  });
+}
+window.addEventListener('scroll', updateActiveNav, { passive: true });
+updateActiveNav();
+
+/* ══════════════════════════════════════════
+   INIT CHARTS
+══════════════════════════════════════════ */
+buildMonthlyChart();
+buildTimingChart();
+buildWeeklyChart();
+buildCompareChart();
+</script>
+</body>
+</html>
