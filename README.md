@@ -6,7 +6,9 @@ Interactive timeline-style dashboard analyzing the impact of logistics (delivery
 
 ## Usage
 
-Open `dashboard.html` directly in any modern browser — no server, build step, or external data files required. All data is embedded as JavaScript literals.
+Open **`index.html`** directly in any modern browser — no server, build step, or internet connection required. Chart.js is bundled inline; all data is embedded as JavaScript literals.
+
+> **GitHub Pages:** Enable GitHub Pages on the `main` branch (root folder) in repository Settings → Pages to get a public URL like `https://ntoledo81.github.io/logistics-impact-dashboard/`.
 
 ## Sections
 
@@ -37,4 +39,4 @@ Built with Edify brand specifications (Ubuntu font, Edify color palette: `#4219B
 
 ## Screenshot
 
-![Dashboard preview](https://github.com/user-attachments/assets/86aa3b7b-1c69-40c9-a5d4-872c0b820085)
+![Dashboard preview](https://github.com/user-attachments/assets/849717ab-7fda-47e8-912f-8e296e0645dd)
